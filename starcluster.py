@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 '''
     Automates searching Shodan for vulnerable systems within the same postal code. 
