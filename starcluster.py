@@ -24,14 +24,6 @@ import guerrillamail
 import mechanicalsoup
 import shodan
 
-# global variables
-browser = mechanicalsoup.StatefulBrowser(
-    soup_config={'features': 'lxml'},
-    raise_on_404=True,
-    user_agent='Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) '
-    'Gecko/20100101 Firefox/47.0 Mozilla/5.0 (Macintosh; '
-    'Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0')
-
 
 class Shodan():
     '''
@@ -42,13 +34,14 @@ class Shodan():
     shodanRegistrationPage = 'https://account.shodan.io/register'
 
     def __init__(self, shodanAPIkey=None, username=None, email=None,
-                 password=None, log=None):
+                 password=None, log=None, browser=None):
         self.shodanAPIkey = shodanAPIkey
         self.username = username
         self.email = email
         self.password = password
         self.gm = None
         self.log = log
+        self.browser = browser
 
         if not log:
             self.log = print
@@ -115,13 +108,13 @@ class Shodan():
         self.log(' +   Email address: ' + self.email)
         self.log(' +   Username: ' + self.username)
         self.log(' +   Password: ' + self.password)
-        browser.open(self.shodanRegistrationPage)
-        browser.select_form()
-        browser['username'] = self.username
-        browser['password'] = self.password
-        browser['password_confirm'] = self.password
-        browser['email'] = self.email
-        browser.submit_selected()
+        self.browser.open(self.shodanRegistrationPage)
+        self.browser.select_form()
+        self.browser['username'] = self.username
+        self.browser['password'] = self.password
+        self.browser['password_confirm'] = self.password
+        self.browser['email'] = self.email
+        self.browser.submit_selected()
 
     def activateShodanAccount(self):
         '''
@@ -149,7 +142,7 @@ class Shodan():
         msg = self.gm.get_email((self.gm.get_email_list()[0].guid)).body
         soup = mechanicalsoup.form.BeautifulSoup
         activationURL = soup(msg, 'html.parser').find_all('a')[0].string
-        browser.open(activationURL)
+        self.browser.open(activationURL)
 
     def getShodanAPIkey(self):
         '''
@@ -168,30 +161,29 @@ class Shodan():
 
             self.activateShodanAccount()
 
-            browser.open(self.shodanLoginPage)
-            browser.select_form("form[action='/login']")
-            browser['username'] = self.username
-            browser['password'] = self.password
-            browser['continue'] = self.shodanHomePage
-            browser.submit_selected()
+            self.browser.open(self.shodanLoginPage)
+            self.browser.select_form("form[action='/login']")
+            self.browser['username'] = self.username
+            self.browser['password'] = self.password
+            self.browser['continue'] = self.shodanHomePage
+            self.browser.submit_selected()
 
             self.log('[*] Retrieving key...')
-            self.shodanAPIkey = browser.get_current_page().find_all(
+            self.shodanAPIkey = self.browser.get_current_page().find_all(
                 'li', {'id': 'api-key-content'})[0].string[9:]
             self.log('[+] Using Shodan API key: ' + self.shodanAPIkey)
 
 
-def findNeighborhood():
+def findNeighborhood(browser):
     '''
     find neighborhood using online service
     '''
     keyCDN = 'https://tools.keycdn.com/geo'
     browser.open(keyCDN)
     return browser.get_current_page().find_all('td')[12].string
-    # log('[*] Launching digital star-cluster over: '+postalCode)
 
 
-def searchPostalCode(shodanAPIkey, postalCode):
+def searchPostalCode(shodanAPIkey, postalCode, log):
     '''
     use Shodan API to search for publicly-accessible devices
     '''
@@ -213,10 +205,6 @@ def main():
     '''
     main script function
     '''
-
-    # main variables
-    global log
-
     # script arguments
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('-a', help='Shodan API key')
@@ -234,20 +222,27 @@ def main():
     logger.addHandler(logging.StreamHandler())
     log = logger.info
 
+    browser = mechanicalsoup.StatefulBrowser(
+        soup_config={'features': 'lxml'},
+        raise_on_404=True,
+        user_agent='Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) '
+        'Gecko/20100101 Firefox/47.0 Mozilla/5.0 (Macintosh; '
+        'Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0')
+
     # create Shodan object
     try:
-        myShodan = Shodan(shodanAPIkey=args.a, log=log)
+        myShodan = Shodan(shodanAPIkey=args.a, log=log, browser=browser)
     except AssertionError as e:
         log(e)
         exit(1)
 
     if not postalCode:
-        postalCode = findNeighborhood()
+        postalCode = findNeighborhood(browser)
 
     log('[+] Using Shodan API key: ' + myShodan.shodanAPIkey)
     log('[*] Launching digital star-cluster over: ' + postalCode)
 
-    searchPostalCode(myShodan.shodanAPIkey, postalCode)
+    searchPostalCode(myShodan.shodanAPIkey, postalCode, log)
 
 
 if __name__ == '__main__':
