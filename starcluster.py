@@ -46,7 +46,7 @@ class Shodan():
         if not self.log:
             self.log = print
 
-        if not self.browswer:
+        if not self.browser:
             browser = mechanicalsoup.StatefulBrowser(
                 soup_config={'features': 'lxml'},
                 raise_on_404=True,
@@ -181,6 +181,23 @@ class Shodan():
                 'li', {'id': 'api-key-content'})[0].string[9:]
             self.log('[+] Using Shodan API key: ' + self.shodanAPIkey)
 
+    def searchPostalCode(self, postalCode):
+        '''
+        use Shodan API to search for publicly-accessible devices
+        '''
+        try:
+            shodanAPI = shodan.Shodan(self.shodanAPIkey)
+            neighborhood = shodanAPI.search(postalCode)
+        except shodan.exception.APIError as error:
+            self.log('[!] Shodan search failed: ' + str(error))
+            return
+
+        for neighbor in neighborhood['matches']:
+            neighborIP = str(neighbor['ip_str'])
+            neighborPort = str(neighbor['port'])
+            self.log(' +   Neighbor: '+neighborIP+':'+neighborPort)
+        self.log('[!] Done.')
+
 
 def findNeighborhood(browser):
     '''
@@ -189,24 +206,6 @@ def findNeighborhood(browser):
     keyCDN = 'https://tools.keycdn.com/geo'
     browser.open(keyCDN)
     return browser.get_current_page().find_all('td')[12].string
-
-
-def searchPostalCode(shodanAPIkey, postalCode, log):
-    '''
-    use Shodan API to search for publicly-accessible devices
-    '''
-    try:
-        shodanAPI = shodan.Shodan(shodanAPIkey)
-        neighborhood = shodanAPI.search(postalCode)
-    except shodan.exception.APIError as error:
-        log('[!] Shodan search failed: '+str(error))
-        exit()
-
-    for neighbor in neighborhood['matches']:
-        neighborIP = str(neighbor['ip_str'])
-        neighborPort = str(neighbor['port'])
-        log(' +   Neighbor: '+neighborIP+':'+neighborPort)
-    log('[!] Done.')
 
 
 def main():
@@ -250,7 +249,7 @@ def main():
     log('[+] Using Shodan API key: ' + myShodan.shodanAPIkey)
     log('[*] Launching digital star-cluster over: ' + postalCode)
 
-    searchPostalCode(myShodan.shodanAPIkey, postalCode, log)
+    myShodan.searchPostalCode(postalCode)
 
 
 if __name__ == '__main__':
