@@ -112,7 +112,7 @@ class Shodan():
 
         self.generatePassword()
 
-        self.log('[*] Registering with Shodan using the following credentials...')
+        self.log('[*] Registering with Shodan using the following credentials:')
         self.log(' +   Email address: ' + self.email)
         self.log(' +   Username: ' + self.username)
         self.log(' +   Password: ' + self.password)
